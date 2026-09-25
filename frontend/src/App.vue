@@ -41,7 +41,7 @@ const annotationStore = useAnnotationStore();
 const tourStore = useTourStore();
 const ready = ref(false);
 
-const galleryPath = computed(() => `/exhibitions/${exhibitionStore.exhibitions[0]?.id ?? 'exhibition-heritage-hall'}`);
+const galleryPath = computed(() => `/exhibitions/${exhibitionStore.latestPublication?.exhibitionId ?? 'exhibition-heritage-hall'}`);
 const tourPath = computed(() => `/manage/tours/${tourStore.tours[0]?.id ?? 'tour-default-route'}`);
 
 const themeOverrides: GlobalThemeOverrides = {
@@ -70,6 +70,8 @@ onMounted(async () => {
   await exhibitionStore.load();
   await annotationStore.load();
   await tourStore.load();
+  // 导览载入后再冻结旧版本库的首个发布快照，保证导览节点一并入库。
+  await exhibitionStore.migrateLegacyPublications();
   ready.value = true;
 });
 </script>

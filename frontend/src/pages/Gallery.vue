@@ -1,13 +1,14 @@
 <template>
-  <section v-if="exhibition" class="gallery-page">
+  <section v-if="publication" class="gallery-page">
     <div class="page-head">
       <div>
-        <h1>{{ exhibition.title }}</h1>
-        <p>{{ exhibition.intro }}</p>
+        <h1>{{ publication.title }}</h1>
+        <p>{{ publication.intro }}</p>
       </div>
       <div class="gallery-actions">
-        <n-tag :bordered="false">{{ exhibition.curator }}</n-tag>
-        <n-button secondary @click="toggleTour">{{ isTouring ? '暂停导览' : '自动导览' }}</n-button>
+        <n-tag :bordered="false">{{ publication.curator }}</n-tag>
+        <n-tag size="small" :bordered="false" type="info">v{{ publication.version }}</n-tag>
+        <n-button secondary :disabled="!activeTour" @click="toggleTour">{{ isTouring ? '暂停导览' : '自动导览' }}</n-button>
       </div>
     </div>
 
@@ -18,7 +19,7 @@
       </div>
       <div class="artifact-strip">
         <button
-          v-for="artifact in artifacts"
+          v-for="artifact in publication.artifacts"
           :key="artifact.id"
           type="button"
           :class="{ active: artifact.id === selectedArtifactId }"
@@ -34,7 +35,12 @@
       />
     </SceneCanvas>
   </section>
-  <n-result v-else status="404" title="展览不存在" description="请先在展览管理中创建或发布展览。" />
+  <n-result
+    v-else
+    status="404"
+    title="展览尚未发布"
+    description="后台草稿不会出现在展厅，请先在展览管理中发布；旧版本不会被草稿改动影响。"
+  />
 </template>
 
 <script setup lang="ts">
@@ -45,19 +51,15 @@ import SceneCanvas from '@/components/common/SceneCanvas.vue';
 import ArtifactPanel from '@/components/viewer/ArtifactPanel.vue';
 import { useThreeScene } from '@/hooks/useThreeScene';
 import { useAnnotationStore } from '@/stores/annotation';
-import { useArtifactStore } from '@/stores/artifact';
 import { useExhibitionStore } from '@/stores/exhibition';
-import { useTourStore } from '@/stores/tour';
-import type { Artifact, Tour } from '@/types';
+import type { ArtifactSnapshot, TourSnapshot } from '@/types';
 import { createGalleryHall, loadArtifactObject } from '@/utils/model-loader';
 import { disposeObject3D } from '@/utils/renderer';
 import { createTourPlayer, type TourPlayerControls } from '@/utils/tour-player';
 
 const route = useRoute();
-const artifactStore = useArtifactStore();
 const exhibitionStore = useExhibitionStore();
 const annotationStore = useAnnotationStore();
-const tourStore = useTourStore();
 
 const containerRef = ref<HTMLElement | null>(null);
 const selectedArtifactId = ref<string | undefined>();
@@ -70,23 +72,21 @@ const three = useThreeScene(containerRef, { cameraPosition: [5.5, 3.4, 8.2] });
 let sceneRoot: THREE.Group | null = null;
 let player: TourPlayerControls | null = null;
 
-const exhibition = computed(() => {
-  const id = String(route.params.id ?? '');
-  return exhibitionStore.getById(id) ?? exhibitionStore.exhibitions[0];
-});
+/** 展厅只读取该展览最新发布的快照版本，后台草稿改动不会影响这里。 */
+const publication = computed(() => exhibitionStore.latestPublicationOf(String(route.params.id ?? '')));
 
-const artifacts = computed<Artifact[]>(() => {
-  const ids = exhibition.value?.artifactIds ?? [];
-  return ids.map((id) => artifactStore.getById(id)).filter((artifact): artifact is Artifact => Boolean(artifact));
-});
+const selectedArtifact = computed<ArtifactSnapshot | undefined>(() =>
+  publication.value?.artifacts.find((artifact) => artifact.id === selectedArtifactId.value)
+);
 
-const selectedArtifact = computed(() => artifactStore.getById(selectedArtifactId.value ?? ''));
-const activeTour = computed<Tour | undefined>(() => {
-  if (!exhibition.value) return undefined;
-  return tourStore.byExhibitionId(exhibition.value.id)[0];
-});
+const activeTour = computed<TourSnapshot | undefined>(() => publication.value?.tours[0]);
 
-const sceneKey = computed(() => `${three.ready.value}-${exhibition.value?.id}-${artifacts.value.map((item) => item.id).join('|')}`);
+const sceneKey = computed(
+  () =>
+    `${three.ready.value}-${publication.value?.id ?? 'none'}-${
+      publication.value?.artifacts.map((item) => item.id).join('|') ?? ''
+    }`
+);
 
 function onSceneReady(element: HTMLElement) {
   containerRef.value = element;
@@ -94,18 +94,22 @@ function onSceneReady(element: HTMLElement) {
 }
 
 async function rebuildScene() {
-  if (!three.ready.value || !three.scene.value || !exhibition.value) return;
+  if (!three.ready.value || !three.scene.value || !publication.value) return;
   if (sceneRoot) {
     three.scene.value.remove(sceneRoot);
     disposeObject3D(sceneRoot);
   }
 
-  const root = createGalleryHall(exhibition.value.themeColor);
+  const root = createGalleryHall(publication.value.themeColor);
   const spacing = 4.1;
   await Promise.all(
-    artifacts.value.map(async (artifact, index) => {
+    publication.value.artifacts.map(async (artifact, index) => {
       const object = await loadArtifactObject(artifact);
-      object.position.set((index - (artifacts.value.length - 1) / 2) * spacing, 0, index % 2 === 0 ? -1.35 : 1.2);
+      object.position.set(
+        (index - (publication.value.artifacts.length - 1) / 2) * spacing,
+        0,
+        index % 2 === 0 ? -1.35 : 1.2
+      );
       object.rotation.y = index % 2 === 0 ? 0.16 : -0.24;
       object.userData.artifactId = artifact.id;
       root.add(object);
@@ -114,8 +118,8 @@ async function rebuildScene() {
 
   sceneRoot = root;
   three.scene.value.add(root);
-  if (!selectedArtifactId.value && artifacts.value[0]) {
-    selectedArtifactId.value = artifacts.value[0].id;
+  if (!selectedArtifactId.value && publication.value.artifacts[0]) {
+    selectedArtifactId.value = publication.value.artifacts[0].id;
   }
   three.render();
 }

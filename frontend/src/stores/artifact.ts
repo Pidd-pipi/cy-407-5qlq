@@ -3,6 +3,7 @@ import { artifactRepository } from '@/api/storage';
 import type { Artifact, ArtifactDraft } from '@/types';
 import { CraftCategory } from '@/types';
 import { createBlobUrl, createId, deleteBlobFile, saveBlobFile } from '@/utils/storage';
+import { hydrateArtifactMedia } from '@/utils/publication';
 
 function craftImage(label: string, background: string, accent: string): string {
   const svg = `
@@ -76,18 +77,6 @@ const seedArtifacts: Artifact[] = [
   }
 ];
 
-async function hydrateMedia(artifact: Artifact): Promise<Artifact> {
-  const fileImages = await Promise.all(artifact.imageFileIds.map((fileId) => createBlobUrl(fileId)));
-  const modelUrl = artifact.modelFileId ? await createBlobUrl(artifact.modelFileId) : artifact.modelUrl;
-  const persistedImages = fileImages.filter((url): url is string => Boolean(url));
-
-  return {
-    ...artifact,
-    images: persistedImages.length > 0 ? persistedImages : artifact.images,
-    modelUrl
-  };
-}
-
 export const useArtifactStore = defineStore('artifact', {
   state: () => ({
     artifacts: [] as Artifact[],
@@ -105,7 +94,7 @@ export const useArtifactStore = defineStore('artifact', {
         await artifactRepository.saveMany(seedArtifacts);
         this.artifacts = seedArtifacts;
       } else {
-        this.artifacts = await Promise.all(records.map(hydrateMedia));
+        this.artifacts = await Promise.all(records.map(hydrateArtifactMedia));
       }
       this.loaded = true;
     },

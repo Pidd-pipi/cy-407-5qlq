@@ -1,7 +1,7 @@
 <template>
   <article class="exhibition-card" :style="{ '--theme': exhibition.themeColor }">
     <div class="status-line">
-      <span>{{ exhibitionStatusLabels[exhibition.status] }}</span>
+      <span :class="{ unpublished: !published }">{{ published ? `已发布 · 最新 v${latestVersion}` : '草稿 · 未发布' }}</span>
       <strong>{{ artifactCount }} 件展品</strong>
     </div>
     <h3>{{ exhibition.title }}</h3>
@@ -9,7 +9,7 @@
     <footer>
       <span>{{ exhibition.curator }}</span>
       <div>
-        <n-button size="small" secondary @click="$emit('open', exhibition.id)">进入</n-button>
+        <n-button size="small" secondary :disabled="!published" @click="$emit('open', exhibition.id)">进入展厅</n-button>
         <n-button size="small" quaternary @click="$emit('edit', exhibition.id)">编辑</n-button>
       </div>
     </footer>
@@ -17,13 +17,18 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { Exhibition } from '@/types';
-import { exhibitionStatusLabels } from '@/types';
 
-defineProps<{
+const props = defineProps<{
   exhibition: Exhibition;
   artifactCount: number;
+  /** 已有的发布版本（版本号从大到小），空数组表示从未发布。 */
+  versions: { version: number }[];
 }>();
+
+const published = computed(() => props.versions.length > 0);
+const latestVersion = computed(() => props.versions[0]?.version ?? 0);
 
 defineEmits<{
   open: [id: string];
@@ -53,9 +58,13 @@ footer {
 }
 
 .status-line {
-  color: var(--museum-brass);
+  color: var(--museum-green);
   font-size: 13px;
   font-weight: 800;
+}
+
+.status-line .unpublished {
+  color: var(--museum-brass);
 }
 
 h3 {

@@ -9,11 +9,6 @@ export enum CraftCategory {
   Metalwork = 'metalwork'
 }
 
-export enum ExhibitionStatus {
-  Draft = 'draft',
-  Published = 'published'
-}
-
 export const craftCategoryLabels: Record<CraftCategory, string> = {
   [CraftCategory.Pottery]: '陶艺',
   [CraftCategory.Embroidery]: '刺绣',
@@ -23,9 +18,4 @@ export const craftCategoryLabels: Record<CraftCategory, string> = {
   [CraftCategory.Lacquer]: '漆器',
   [CraftCategory.Weaving]: '编织',
   [CraftCategory.Metalwork]: '金属工艺'
-};
-
-export const exhibitionStatusLabels: Record<ExhibitionStatus, string> = {
-  [ExhibitionStatus.Draft]: '草稿',
-  [ExhibitionStatus.Published]: '已发布'
 };

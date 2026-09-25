@@ -7,9 +7,10 @@
 - 3D 展厅：Three.js 渲染展厅空间，支持拖拽旋转、滚轮缩放、点击展品查看详情。
 - 展品详情：独立 360° 模型查看器，右侧信息面板展示作者、工艺、材质、尺寸和标注。
 - 展览管理：创建、编辑、删除展览，调整展品顺序，设置主题色并发布。
+- 发布快照：发布时把展览文案、展品顺序与资料、主题和导览节点整体冻结为不可变版本；3D 展厅与自动导览只读取最新发布版本，后台改草稿不影响展出。展品顺序或导览引用了已被删除的展品时发布会被阻止并逐项说明缺哪件，草稿与旧版本原样保留。后台列出每个版本的版本号、发布时间和展品数，可把任意旧版本载入草稿，重新发布后才替换展厅；展品的图片/模型文件随快照复制独立副本，撤展不影响已发布版本。
 - 导览编辑：时间轴式节点编辑，配置展品、相机位置、目标点、过渡时长和讲解文字。
 - 展品库：网格/列表视图切换，维护展品资料，上传本地图片和 GLB/GLTF 模型。
-- 本地持久化：IndexedDB 保存四类业务实体，File API + Blob 保存图片和 3D 模型文件。
+- 本地持久化：IndexedDB 保存五类业务实体（含发布版本 publications），File API + Blob 保存图片和 3D 模型文件。
 - Three.js 生命周期：统一 renderer 管理、动画循环和组件卸载资源释放。
 
 ## 快速启动
@@ -51,7 +52,7 @@ frontend/src/
 ├── pages/         # Gallery, ArtifactDetail, ExhibitionManage, TourEditor, ArtifactManage
 ├── router/
 ├── styles/
-└── utils/         # storage.ts, renderer.ts, model-loader.ts, tour-player.ts
+└── utils/         # storage.ts, publication.ts, renderer.ts, model-loader.ts, tour-player.ts
 ```
 
 ## 3D功能截图占位

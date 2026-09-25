@@ -1,13 +1,13 @@
 <template>
-  <section v-if="exhibition" class="gallery-page">
+  <section v-if="version" class="gallery-page">
     <div class="page-head">
       <div>
-        <h1>{{ exhibition.title }}</h1>
-        <p>{{ exhibition.intro }}</p>
+        <h1>{{ version.title }}</h1>
+        <p>{{ version.intro }}</p>
       </div>
       <div class="gallery-actions">
-        <n-tag :bordered="false">{{ exhibition.curator }}</n-tag>
-        <n-button secondary @click="toggleTour">{{ isTouring ? '暂停导览' : '自动导览' }}</n-button>
+        <n-tag :bordered="false">{{ version.curator }}</n-tag>
+        <n-button secondary :disabled="!activeTour" @click="toggleTour">{{ isTouring ? '暂停导览' : '自动导览' }}</n-button>
       </div>
     </div>
 
@@ -34,6 +34,12 @@
       />
     </SceneCanvas>
   </section>
+  <n-result
+    v-else-if="exhibition"
+    status="info"
+    title="展览尚未发布"
+    description="后台草稿还不会出现在展厅，请在展览管理中发布一个版本。"
+  />
   <n-result v-else status="404" title="展览不存在" description="请先在展览管理中创建或发布展览。" />
 </template>
 
@@ -45,19 +51,17 @@ import SceneCanvas from '@/components/common/SceneCanvas.vue';
 import ArtifactPanel from '@/components/viewer/ArtifactPanel.vue';
 import { useThreeScene } from '@/hooks/useThreeScene';
 import { useAnnotationStore } from '@/stores/annotation';
-import { useArtifactStore } from '@/stores/artifact';
 import { useExhibitionStore } from '@/stores/exhibition';
-import { useTourStore } from '@/stores/tour';
-import type { Artifact, Tour } from '@/types';
+import { useExhibitionVersionStore } from '@/stores/version';
+import type { Artifact, ExhibitionVersionTour } from '@/types';
 import { createGalleryHall, loadArtifactObject } from '@/utils/model-loader';
 import { disposeObject3D } from '@/utils/renderer';
 import { createTourPlayer, type TourPlayerControls } from '@/utils/tour-player';
 
 const route = useRoute();
-const artifactStore = useArtifactStore();
 const exhibitionStore = useExhibitionStore();
+const versionStore = useExhibitionVersionStore();
 const annotationStore = useAnnotationStore();
-const tourStore = useTourStore();
 
 const containerRef = ref<HTMLElement | null>(null);
 const selectedArtifactId = ref<string | undefined>();
@@ -75,18 +79,15 @@ const exhibition = computed(() => {
   return exhibitionStore.getById(id) ?? exhibitionStore.exhibitions[0];
 });
 
-const artifacts = computed<Artifact[]>(() => {
-  const ids = exhibition.value?.artifactIds ?? [];
-  return ids.map((id) => artifactStore.getById(id)).filter((artifact): artifact is Artifact => Boolean(artifact));
-});
+// 展厅只读取最新发布版本，后台草稿改动不会影响展出内容
+const version = computed(() => (exhibition.value ? versionStore.latestByExhibitionId(exhibition.value.id) : undefined));
 
-const selectedArtifact = computed(() => artifactStore.getById(selectedArtifactId.value ?? ''));
-const activeTour = computed<Tour | undefined>(() => {
-  if (!exhibition.value) return undefined;
-  return tourStore.byExhibitionId(exhibition.value.id)[0];
-});
+const artifacts = computed<Artifact[]>(() => version.value?.artifacts ?? []);
 
-const sceneKey = computed(() => `${three.ready.value}-${exhibition.value?.id}-${artifacts.value.map((item) => item.id).join('|')}`);
+const selectedArtifact = computed(() => artifacts.value.find((artifact) => artifact.id === selectedArtifactId.value));
+const activeTour = computed<ExhibitionVersionTour | undefined>(() => version.value?.tour ?? undefined);
+
+const sceneKey = computed(() => `${three.ready.value}-${version.value?.id ?? 'unpublished'}`);
 
 function onSceneReady(element: HTMLElement) {
   containerRef.value = element;
@@ -94,13 +95,16 @@ function onSceneReady(element: HTMLElement) {
 }
 
 async function rebuildScene() {
-  if (!three.ready.value || !three.scene.value || !exhibition.value) return;
+  if (!three.ready.value || !three.scene.value || !version.value) return;
+  player?.stop();
+  isTouring.value = false;
+  activeNarration.value = '';
   if (sceneRoot) {
     three.scene.value.remove(sceneRoot);
     disposeObject3D(sceneRoot);
   }
 
-  const root = createGalleryHall(exhibition.value.themeColor);
+  const root = createGalleryHall(version.value.themeColor);
   const spacing = 4.1;
   await Promise.all(
     artifacts.value.map(async (artifact, index) => {
@@ -148,7 +152,7 @@ function toggleTour() {
     isTouring.value = false;
     return;
   }
-  if (!three.camera.value || !three.controls.value || !activeTour.value) return;
+  if (!three.camera.value || !three.controls.value || !activeTour.value || activeTour.value.nodes.length === 0) return;
   player?.stop();
   player = createTourPlayer(three.camera.value, three.controls.value, activeTour.value.nodes, (node) => {
     selectedArtifactId.value = node.artifactId;

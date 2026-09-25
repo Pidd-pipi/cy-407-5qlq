@@ -1,4 +1,4 @@
-import type { Annotation, Artifact, Exhibition, Tour } from '@/types';
+import type { Annotation, Artifact, Exhibition, ExhibitionVersion, Tour } from '@/types';
 import {
   deleteRecord,
   getAllRecords,
@@ -20,5 +20,6 @@ function createRepository<T extends { id: string }>(storeName: EntityStoreName) 
 
 export const artifactRepository = createRepository<Artifact>('artifacts');
 export const exhibitionRepository = createRepository<Exhibition>('exhibitions');
+export const exhibitionVersionRepository = createRepository<ExhibitionVersion>('exhibitionVersions');
 export const annotationRepository = createRepository<Annotation>('annotations');
 export const tourRepository = createRepository<Tour>('tours');

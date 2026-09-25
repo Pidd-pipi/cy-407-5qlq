@@ -18,6 +18,7 @@
           <strong>{{ exhibition?.title ?? '未绑定展览' }}</strong>
           <span>{{ tour.nodes.length }} 个导览节点</span>
         </div>
+        <p class="tour-hint">此处修改只保存到草稿，展览重新发布后才会更新展厅中的自动导览。</p>
         <TourTimeline
           :nodes="tour.nodes"
           :artifacts="artifactStore.artifacts"
@@ -149,6 +150,12 @@ async function removeNode(nodeId: string) {
 
 .tour-meta span {
   color: rgba(31, 46, 41, 0.62);
+}
+
+.tour-hint {
+  margin: 0;
+  color: rgba(31, 46, 41, 0.58);
+  font-size: 13px;
 }
 
 @media (max-width: 980px) {

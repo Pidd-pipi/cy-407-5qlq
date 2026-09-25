@@ -76,7 +76,7 @@ const seedArtifacts: Artifact[] = [
   }
 ];
 
-async function hydrateMedia(artifact: Artifact): Promise<Artifact> {
+export async function hydrateArtifactMedia(artifact: Artifact): Promise<Artifact> {
   const fileImages = await Promise.all(artifact.imageFileIds.map((fileId) => createBlobUrl(fileId)));
   const modelUrl = artifact.modelFileId ? await createBlobUrl(artifact.modelFileId) : artifact.modelUrl;
   const persistedImages = fileImages.filter((url): url is string => Boolean(url));
@@ -105,7 +105,7 @@ export const useArtifactStore = defineStore('artifact', {
         await artifactRepository.saveMany(seedArtifacts);
         this.artifacts = seedArtifacts;
       } else {
-        this.artifacts = await Promise.all(records.map(hydrateMedia));
+        this.artifacts = await Promise.all(records.map(hydrateArtifactMedia));
       }
       this.loaded = true;
     },

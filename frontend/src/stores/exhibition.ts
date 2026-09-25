@@ -67,12 +67,6 @@ export const useExhibitionStore = defineStore('exhibition', {
     },
     async reorderArtifacts(id: string, artifactIds: string[]) {
       await this.updateExhibition(id, { artifactIds });
-    },
-    async publishExhibition(id: string) {
-      await this.updateExhibition(id, { status: ExhibitionStatus.Published });
-    },
-    async unpublishExhibition(id: string) {
-      await this.updateExhibition(id, { status: ExhibitionStatus.Draft });
     }
   }
 });

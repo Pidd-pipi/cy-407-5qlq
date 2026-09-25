@@ -1,6 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 
-export type EntityStoreName = 'artifacts' | 'exhibitions' | 'annotations' | 'tours';
+export type EntityStoreName = 'artifacts' | 'exhibitions' | 'exhibitionVersions' | 'annotations' | 'tours';
 
 export interface StoredFile {
   id: string;
@@ -20,6 +20,10 @@ interface CraftGalleryDB extends DBSchema {
     key: string;
     value: { id: string; [key: string]: unknown };
   };
+  exhibitionVersions: {
+    key: string;
+    value: { id: string; [key: string]: unknown };
+  };
   annotations: {
     key: string;
     value: { id: string; [key: string]: unknown };
@@ -35,7 +39,7 @@ interface CraftGalleryDB extends DBSchema {
 }
 
 const DB_NAME = 'craft-gallery-local';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbPromise: Promise<IDBPDatabase<CraftGalleryDB>> | null = null;
 const objectUrls = new Map<string, string>();
@@ -49,7 +53,7 @@ export function getDatabase(): Promise<IDBPDatabase<CraftGalleryDB>> {
   if (!dbPromise) {
     dbPromise = openDB<CraftGalleryDB>(DB_NAME, DB_VERSION, {
       upgrade(db) {
-        for (const storeName of ['artifacts', 'exhibitions', 'annotations', 'tours', 'files'] as const) {
+        for (const storeName of ['artifacts', 'exhibitions', 'exhibitionVersions', 'annotations', 'tours', 'files'] as const) {
           if (!db.objectStoreNames.contains(storeName)) {
             db.createObjectStore(storeName, { keyPath: 'id' });
           }
@@ -111,6 +115,21 @@ export async function saveBlobFile(file: Blob, fileName = 'local-file'): Promise
 export async function getBlobFile(fileId: string): Promise<StoredFile | undefined> {
   const db = await getDatabase();
   return db.get('files', fileId);
+}
+
+export async function copyBlobFile(fileId: string): Promise<StoredFile | undefined> {
+  const source = await getBlobFile(fileId);
+  if (!source) return undefined;
+
+  const copy: StoredFile = {
+    ...source,
+    id: createId('file'),
+    blob: source.blob.slice(0, source.blob.size, source.blob.type),
+    createdAt: new Date().toISOString()
+  };
+  const db = await getDatabase();
+  await db.put('files', copy);
+  return copy;
 }
 
 export async function createBlobUrl(fileId: string): Promise<string | undefined> {

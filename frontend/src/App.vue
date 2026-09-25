@@ -34,11 +34,13 @@ import { useAnnotationStore } from '@/stores/annotation';
 import { useArtifactStore } from '@/stores/artifact';
 import { useExhibitionStore } from '@/stores/exhibition';
 import { useTourStore } from '@/stores/tour';
+import { useExhibitionVersionStore } from '@/stores/version';
 
 const artifactStore = useArtifactStore();
 const exhibitionStore = useExhibitionStore();
 const annotationStore = useAnnotationStore();
 const tourStore = useTourStore();
+const versionStore = useExhibitionVersionStore();
 const ready = ref(false);
 
 const galleryPath = computed(() => `/exhibitions/${exhibitionStore.exhibitions[0]?.id ?? 'exhibition-heritage-hall'}`);
@@ -70,6 +72,7 @@ onMounted(async () => {
   await exhibitionStore.load();
   await annotationStore.load();
   await tourStore.load();
+  await versionStore.load();
   ready.value = true;
 });
 </script>
